@@ -6,6 +6,7 @@ import (
 	"github.com/osquery/osquery-go"
 	"github.com/rock-go/rock/lua"
 	"gopkg.in/tomb.v2"
+	"os"
 	"os/exec"
 	"reflect"
 	"sync"
@@ -18,13 +19,13 @@ var client *osq
 
 type osq struct {
 	lua.Super
-	cfg  *config
-	tom  *tomb.Tomb
-	cmd  *exec.Cmd
-	mux  sync.Mutex
-	ctx  context.Context
-	kill context.CancelFunc
-	cli  *osquery.ExtensionManagerClient
+	cfg   *config
+	tom   *tomb.Tomb
+	cmd   *exec.Cmd
+	mux   sync.Mutex
+	ctx   context.Context
+	kill  context.CancelFunc
+	cli   *osquery.ExtensionManagerClient
 }
 
 func newOsq(cfg *config) *osq {
@@ -61,17 +62,12 @@ func (o *osq) Start() error {
 }
 
 func (o *osq) Close() error {
-	if o.cmd.Process != nil {
+	if o.cmd != nil && o.cmd.Process != nil {
 		o.cmd.Process.Kill()
 	}
-
-	if client.Name() == o.Name() {
-		client = nil
-	}
-
 	o.kill()
+	client = nil
 	o.tom.Kill(fmt.Errorf("osquery kill"))
-
 	return nil
 }
 
@@ -79,24 +75,24 @@ func (o *osq) forkExec() error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
-	cmd := &exec.Cmd{
-		Path: o.cfg.path ,
-		Args: o.cfg.Args() ,
-		SysProcAttr: newSysProcAttr(),
-	}
+	cmd := exec.Command(o.cfg.path , o.cfg.Args()...)
+	cmd.SysProcAttr = newSysProcAttr()
 
 	if e := cmd.Start(); e != nil {
 		return e
 	}
 
-	o.tom.Go(cmd.Wait)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 	o.cmd = cmd
+	o.tom.Go(cmd.Wait)
 	return nil
 }
 
 func (o *osq) connect() error {
 	timeout := time.Duration(o.cfg.timeout) * time.Second
-	cli , err := osquery.NewClient(o.cfg.socket , timeout)
+	cli , err := osquery.NewClient(o.cfg.sock , timeout)
 	if err != nil {
 		return err
 	}

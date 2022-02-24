@@ -5,14 +5,15 @@ import (
 	"github.com/rock-go/rock/auxlib"
 	"github.com/rock-go/rock/lua"
 	"path/filepath"
+	"strings"
 )
 
 type config struct {
 	name    string
 	path    string
 	hash    string
+	sock    string
 	flags   []string
-	socket  string
 	timeout int
 	co      *lua.LState
 }
@@ -22,14 +23,28 @@ func newConfig(L *lua.LState) *config {
 	cfg := &config{name:"osquery" , timeout: 10}
 	tab.Range(func(key string, val lua.LValue) { cfg.NewIndex(L , key , val) })
 	cfg.co = xEnv.Clone(L)
+
+	if err := cfg.valid(); err != nil {
+		L.RaiseError("%v" , err)
+		return nil
+	}
 	return cfg
+
 }
 
 func (cfg *config) Args() []string {
-	flags := []string{ cfg.path }
+	var flags []string
 
+	shell := false
 	for _ , item := range cfg.flags {
+		if strings.HasPrefix(item , "extensions_socket=") {
+			shell = true
+		}
 		flags = append(flags , "--" + item)
+	}
+
+	if !shell {
+		flags = append(flags , "--extensions_socket=\"" + cfg.sock + "\"")
 	}
 	return  flags
 }
@@ -40,10 +55,10 @@ func (cfg *config) NewIndex(L *lua.LState , key string , val lua.LValue) bool {
 		cfg.name = val.String()
 
 	case "path":
-		cfg.path = val.String()
+		cfg.path = filepath.Clean(val.String())
 
-	case "socket":
-		cfg.socket = val.String()
+	case "sock":
+		cfg.sock = val.String()
 
 	case "hash":
 		cfg.hash = val.String()
@@ -85,24 +100,16 @@ func (cfg *config) valid() error {
 		return fmt.Errorf("not found flags")
 	}
 
-	path , err := filepath.Abs(filepath.Clean(cfg.path))
+	hash , err := auxlib.FileMd5(cfg.path)
 	if err != nil {
 		return err
-	} else {
-		cfg.path = path
 	}
 
-	socket , err := filepath.Abs(filepath.Clean(cfg.socket))
+	path , err := filepath.Abs(cfg.path)
 	if err != nil {
-		return err
-	} else {
-		cfg.socket = socket
+		return fmt.Errorf("abs path %v" , err)
 	}
-
-	hash , err := auxlib.FileMd5(path)
-	if err != nil {
-		return err
-	}
+	cfg.path = path
 
 	if hash != cfg.hash {
 		return fmt.Errorf("checksum fail got %v" , hash)

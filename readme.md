@@ -21,23 +21,46 @@
 - [userdata.query(sql) reply](结果)
 
 ```lua
-    local client = rock.osquery{
-        name = "client",
-        hash = "0e35ab6b34f3d06aec048db77756b7af",
-        path = "share/software/osquery/bin/osqueryd",
-        socket = "share/shell.em",
-        flags = {
-            "disable_extensions=false",
-            "database_path=share/osquery.db",
-            "extensions_socket=share/shell.em",
+    --windows
+    local client
+
+    if rock.windows then
+        client = rock.osquery{
+            name = "client",
+            path = "share\\software\\osqueryd.exe",
+            hash = "940df5da06c7738f2cf0b8aa2e198d3b",
+            sock = "\\\\.\\pipe\\shell.em",
+            flags = {
+                [[allow_unsafe]],
+                [[disable_extensions=false]],
+                [[config_path=.osuqery.conf]],
+                [[logger_path=share]],
+                [[database_path="share\osquery.db"]],
+            }
         }
-    }
+    else
+        client = rock.osquery{
+            name = "client",
+            path = [[share/software/osqueryd.x]],
+            hash = [[940df5da06c7738f2cf0b8aa2e198d3b]],
+            sock = [[shell/shell.em]],
+            flags = {
+                [[disable_extensions=false]],
+                [[extensions_socket="share/shell.em"]],
+                [[database_path="share/osquery.db"]],
+            }
+        }
 
-    --启动
+    end
+
+
+    -- 启动
     client.start()
-
-    --设置为默认
+    -- 设置默认
     client.default()
+
+    -- 私有
+    inline(client)
 
     local r = client.query("select * from last") --linux
 ```
