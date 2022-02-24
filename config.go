@@ -19,8 +19,14 @@ type config struct {
 }
 
 func newConfig(L *lua.LState) *config {
-	tab := L.CheckTable(1)
 	cfg := &config{name:"osquery" , timeout: 10}
+
+	if L.CodeVM() != "osquery" {
+		L.RaiseError("not allow new osquery userdata , must be osquery , got %v" , L.CodeVM())
+		return cfg
+	}
+
+	tab := L.CheckTable(1)
 	tab.Range(func(key string, val lua.LValue) { cfg.NewIndex(L , key , val) })
 	cfg.co = xEnv.Clone(L)
 

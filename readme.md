@@ -8,8 +8,8 @@
 
 - [github.com/rock-go/rock-osquery-go](https://github.com/rock-go/rock-osquery-go)
 
-## rock.osquery
-- [rock.osquery{name , path , hash , flags , socket , timeout} userdata](#)
+## rock.osquery.client
+- [rock.osquery.client{name , path , hash , flags , socket , timeout} userdata](#)
 - name: 进程名称
 - path: osquery 可执行文件路径
 - hash: osquery 的checksum
@@ -25,7 +25,7 @@
     local client
 
     if rock.windows then
-        client = rock.osquery{
+        client = rock.osquery.client{
             name = "client",
             path = "share\\software\\osqueryd.exe",
             hash = "940df5da06c7738f2cf0b8aa2e198d3b",
@@ -39,7 +39,7 @@
             }
         }
     else
-        client = rock.osquery{
+        client = rock.osquery.client{
             name = "client",
             path = [[share/software/osqueryd.x]],
             hash = [[940df5da06c7738f2cf0b8aa2e198d3b]],
@@ -66,7 +66,7 @@
 ```
 
 ## rock.query
-- [rock.query(sql) reply](#内部接口)
+- [rock.osquery.query(sql) reply](#内部接口)
 - 注意: 需要先client.default()设置默认client 才能全局调用
 
 ## 内部接口
@@ -79,7 +79,7 @@
 - [reply.warp](#) &nbsp;错误信息
 - [reply.ipairs(function)](#) &nbsp; 轮询回调
 ```lua
-    local rx = rock.query("select * from last")
+    local rx = rock.osquery.query("select * from last")
     print(rx.ok)
     print(rx.msg)
     print(rx.raw)

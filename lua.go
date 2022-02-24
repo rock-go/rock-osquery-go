@@ -49,6 +49,8 @@ func queryL(L *lua.LState) int {
 
 func LuaInjectApi(env *xbase.EnvT) {
 	xEnv = env
-	env.Set("osquery", lua.NewFunction(constructor))
-	env.Set("query"  , lua.NewFunction(queryL))
+	kv := lua.NewUserKV()
+	kv.Set("client", lua.NewFunction(constructor))
+	kv.Set("query"  , lua.NewFunction(queryL))
+	env.Set("osquery" , kv)
 }
